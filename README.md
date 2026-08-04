@@ -5,17 +5,6 @@ filtering by tool, by skill, and by date range, across separate Tool and Skill A
 tabs. Ships with its own ClickHouse instance and its own OTel Collector — no Langfuse (or
 any other backend) required.
 
-```
-Claude Code CLI ──OTLP──▶ otel-collector ──clickhouse exporter──▶ clickhouse ◀── dashboard (reads)
-```
-
-The Collector's `transform/rename_tool_spans` processor renames Claude Code's generic
-`claude_code.tool` spans to `claude_code.tool:{name}` / `claude_code.skill:{name}` using
-attributes Claude Code already emits, so ClickHouse queries can group by name and tell
-tools/skills apart. The Collector's built-in `clickhouse` exporter then writes spans
-straight into its own `otel_traces` table — no Langfuse ingestion path, no shared
-ClickHouse instance with any other stack.
-
 ## Setup
 
 ### 1. Create your `.env`
@@ -123,42 +112,9 @@ This shell function only fires when *you* type `claude` in a terminal — anythi
 launches the `claude` binary directly (a GUI wrapper, an editor extension, a task runner)
 bypasses your shell entirely and won't pick it up.
 
-<details>
-<summary>Optional: making this work when Claude Code is launched by <a href="https://cmux.com">cmux</a> instead of your shell</summary>
-
-cmux launches the `claude` binary directly, so the shell function above never runs for
-cmux-managed sessions. cmux exposes exactly one relevant hook for this: `automation.claudeBinaryPath`
-in `~/.config/cmux/cmux.json` — a path to the binary it should run instead of resolving
-`claude` from `PATH`. Point it at a small wrapper script that does the same thing the shell
-function does, then `exec`s the real binary:
-
-```bash
-#!/usr/bin/env bash
-# e.g. ~/.local/bin/claude-cmux-wrapper
-project_name="$(basename "$PWD")"
-project_name="${project_name// /-}"
-export OTEL_RESOURCE_ATTRIBUTES="project.name=${project_name}"
-exec /opt/homebrew/bin/claude "$@"
-```
-
-```jsonc
-// ~/.config/cmux/cmux.json
-"automation": {
-  "claudeBinaryPath": "/Users/you/.local/bin/claude-cmux-wrapper"
-},
-```
-
-Back up `cmux.json` before editing it (cmux's own convention), then run `cmux reload-config`
-to apply without restarting the app. Don't point `claudeBinaryPath` at
-`/opt/homebrew/bin/claude` itself and wrap *that* — it's a Homebrew-managed symlink and
-`brew upgrade` will silently overwrite anything placed there; routing through cmux's own
-config keeps the wrapper independent of that churn.
-
-This is optional and unmaintained on any particular machine by default — it's a bit more
-moving parts than the shell function (a script file plus an app-specific config edit) for
-the same result, so reach for it only if you actually run Claude Code through cmux.
-
-</details>
+Launch Claude Code via [cmux](https://cmux.com) instead of a shell? The shell function
+above won't fire for cmux-managed sessions — see
+[`docs/cmux-wrapper.md`](docs/cmux-wrapper.md) for the equivalent wrapper-script approach.
 
 Whichever of the above you use, **existing open Claude Code sessions won't pick it up.**
 `OTEL_*` env vars are read once when the `claude` process starts, so editing

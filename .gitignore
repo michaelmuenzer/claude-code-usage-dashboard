@@ -8,3 +8,5 @@ public/vendor/
 docs/*
 !docs/ui-specification.md
 !docs/langfuse-dual-export.md
+!docs/architecture.md
+!docs/cmux-wrapper.md
