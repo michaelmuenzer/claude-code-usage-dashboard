@@ -2,7 +2,7 @@
 
 A small, fully standalone dashboard for Claude Code tool/skill/plugin usage, with live filtering by tool, by skill, and by date range, across separate Tool and Skill Analytics tabs.
 
-Dashboard walkthrough: live tool filtering, date range, Skill Analytics, and the Prompt Trace Waterfall
+![Dashboard walkthrough: live tool filtering, date range, Skill Analytics, and the Prompt Trace Waterfall](media/dashboard-demo.webp)
 
 ## Functionality
 
