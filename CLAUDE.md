@@ -17,3 +17,14 @@ A rebuild is only required when `package.json`, `package-lock.json`, or the `Doc
 ```
 docker compose up -d --build dashboard
 ```
+
+**Editing `otel-collector-config.yaml`:** it's bind-mounted into the container, so saving a
+change on disk isn't enough — run `docker compose restart otel-collector` to make it take
+effect.
+
+**Tear down:**
+
+```bash
+docker compose down       # stops everything, keeps all data
+docker compose down -v    # also deletes all data (ClickHouse volumes)
+```

@@ -5,6 +5,8 @@ filtering by tool, by skill, and by date range, across separate Tool and Skill A
 tabs. Ships with its own ClickHouse instance and its own OTel Collector — no Langfuse (or
 any other backend) required.
 
+![Dashboard walkthrough: live tool filtering, date range, Skill Analytics, and the Prompt Trace Waterfall](media/dashboard-demo.gif)
+
 ## Setup
 
 ### 1. Create your `.env`
@@ -43,28 +45,19 @@ your existing settings first with `cp ~/.claude/settings.json ~/.claude/settings
 }
 ```
 
-`OTEL_LOG_USER_PROMPTS=1` is required for the Prompts tab to show actual prompt text —
-without it, Claude Code redacts prompts before they're ever sent. Once set, **prompt text
-is stored in plaintext in your local ClickHouse** — a step up in sensitivity from
-tool/skill names alone. This stack is local-only and never leaves your machine, but worth
-knowing before you turn it on.
-
 This applies to every Claude Code session on this machine. To scope it to one project
 instead, put the same block in that project's `.claude/settings.json`. Env vars are read
 at process startup, so open a new terminal / start a new `claude` session after saving.
 
 This stack's OTel Collector and ClickHouse default to `14317`/`14318`/`18123`/`19000` (the
-dashboard app itself stays on `3001`) specifically so it can run alongside a separate
-Langfuse monitoring stack — which defaults to `4317`/`4318`/`8123`/`9000` — without a port
-collision. If you're only running this stack, feel free to move those back to the OTel
-defaults (`4317`/`4318`) in `docker-compose.yml`.
+dashboard app itself stays on `3001`) specifically so it can run alongside a separate Langfuse monitoring stack without a port collision. If you're only running this stack, feel free to move those back to the OTel defaults (`4317`/`4318`) in `docker-compose.yml`.
 
 Want every session to also land in a separate Langfuse stack at the same time? See
-[`docs/langfuse-dual-export.md`](docs/langfuse-dual-export.md).
+`[docs/langfuse-dual-export.md](docs/langfuse-dual-export.md)`.
 
 ### 4. Open the dashboard
 
-http://localhost:3001
+[http://localhost:3001](http://localhost:3001)
 
 ## Filtering by project
 
@@ -103,33 +96,19 @@ claude() {
 `command claude` bypasses the function to call the real binary, so args still pass through.
 
 - Only fires when *you* type `claude` in a terminal — a GUI wrapper, editor extension, or
-  task runner that launches the binary directly won't trigger it. Launching via
-  [cmux](https://cmux.com) instead? See [`docs/cmux-wrapper.md`](docs/cmux-wrapper.md) for
-  the equivalent wrapper-script approach.
+task runner that launches the binary directly won't trigger it. Launching via
+[cmux](https://cmux.com) instead? See `[docs/cmux-wrapper.md](docs/cmux-wrapper.md)` for
+the equivalent wrapper-script approach.
 - A project-level `OTEL_RESOURCE_ATTRIBUTES` still takes precedence over this shell
-  default, so you can hand-pick names for specific repos and let everything else fall back
-  to its folder name.
+default, so you can hand-pick names for specific repos and let everything else fall back
+to its folder name.
 
 Whichever tagging method you use, **existing open Claude Code sessions won't pick it up.**
 `OTEL_*` env vars are read once when the `claude` process starts, so restart (or open a new)
 session after saving to see it reflected on the dashboard.
 
-## Filtering by session type
-
-Claude Code doesn't send a session-type flag of its own — each trace is classified as
-**interactive** or **one-shot** by counting how many `claude_code.interaction` spans (i.e.
-user prompts) it contains:
-
-- **Interactive** — more than one prompt in the same trace: an ongoing back-and-forth
-  session, e.g. `claude` run in a terminal and used for several turns, or a resumed
-  session.
-- **One-shot** — exactly one prompt in the trace: an isolated `claude -p "..."` call that
-  starts, answers, and exits without further interaction.
-
-This is computed per-trace at query time — `if(session_join.interaction_count > 1,
-'interactive', 'one-shot')`, joined in via `sessionTypeJoinCondition` in `src/filters.ts` —
-rather than stored as a column, so every chart's aggregation reflects the full trace no
-matter which span type it's counting.
+See [`docs/architecture.md`](docs/architecture.md#filtering-by-session-type) for how
+sessions are classified as interactive vs. one-shot.
 
 ## Local development (without Docker)
 
@@ -145,11 +124,11 @@ resolves inside the Compose network).
 
 ## Maintenance
 
-**Editing `otel-collector-config.yaml`:** it's bind-mounted into the container, so saving a
+**Editing** `otel-collector-config.yaml`**:** it's bind-mounted into the container, so saving a
 change on disk isn't enough — run `docker compose restart otel-collector` to make it take
 effect.
 
-**Editing `src/` or `public/`:** the `dashboard` container hot-reloads — those directories
+**Editing** `src/` **or** `public/`**:** the `dashboard` container hot-reloads — those directories
 are bind-mounted and the container runs `tsx watch`, so saving a change on disk is picked up
 automatically, no restart needed. Editing `package.json`, `package-lock.json`, or the
 `Dockerfile` itself does need a rebuild: `docker compose up -d --build dashboard`.
@@ -160,6 +139,8 @@ automatically, no restart needed. Editing `package.json`, `package-lock.json`, o
 docker compose down       # stops everything, keeps all data
 docker compose down -v    # also deletes all data (ClickHouse volumes)
 ```
+
+
 
 ## License
 
