@@ -126,7 +126,7 @@ session after saving to see it reflected on the dashboard.
 
 ## Filtering by session type
 
-Sessions are also classified as interactive vs. one-shot automatically, no setup required. See `[docs/architecture.md](docs/architecture.md#filtering-by-session-type)` for how that classification works.
+Sessions are also classified as interactive vs. one-shot automatically, no setup required. See [docs/architecture.md](docs/architecture.md#filtering-by-session-type) for how that classification works.
 
 ## Local development (without Docker)
 
@@ -157,8 +157,6 @@ automatically, no restart needed. Editing `package.json`, `package-lock.json`, o
 docker compose down       # stops everything, keeps all data
 docker compose down -v    # also deletes all data (ClickHouse volumes)
 ```
-
-
 
 ## License
 
