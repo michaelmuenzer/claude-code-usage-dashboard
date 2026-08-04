@@ -1,11 +1,28 @@
 # Claude Code Usage Dashboard
 
-A small, fully standalone dashboard for Claude Code tool/skill/plugin usage, with live
-filtering by tool, by skill, and by date range, across separate Tool and Skill Analytics
-tabs. Ships with its own ClickHouse instance and its own OTel Collector — no Langfuse (or
-any other backend) required.
+A small, fully standalone dashboard for Claude Code tool/skill/plugin usage, with live filtering by tool, by skill, and by date range, across separate Tool and Skill Analytics tabs.
 
-![Dashboard walkthrough: live tool filtering, date range, Skill Analytics, and the Prompt Trace Waterfall](media/dashboard-demo.gif)
+Dashboard walkthrough: live tool filtering, date range, Skill Analytics, and the Prompt Trace Waterfall
+
+## Functionality
+
+Claude Code decides for itself which tools and skills to reach for. Normally that's invisible.
+
+
+
+This dashboard answers:
+
+- **What actually happened in one prompt?**  
+The real, nested sequence of LLM calls, tool calls, and skill invocations for a single trace.  
+
+- **What's slow?**  
+Which tools and skills are dragging a session out.  
+
+- **What's failing, and why?**  
+The exact error, the prompt that triggered it, and how long it ran before failing.  
+
+- **What's burning tokens?**  
+Which prompts are consuming the most input/output/cache tokens.
 
 ## Setup
 
@@ -24,12 +41,12 @@ local default.
 docker compose up -d --build
 ```
 
-First boot pulls the images and builds the dashboard image — give it a minute. Check
+First boot pulls the images and builds the dashboard image, so give it a minute. Check
 progress with `docker compose ps`.
 
 ### 3. Point Claude Code at this stack
 
-Add this to `~/.claude/settings.json` (merge it in — don't overwrite the file; back up
+Add this to `~/.claude/settings.json` (merge it in, don't overwrite the file; back up
 your existing settings first with `cp ~/.claude/settings.json ~/.claude/settings.json.bak`):
 
 ```json
@@ -53,7 +70,7 @@ This stack's OTel Collector and ClickHouse default to `14317`/`14318`/`18123`/`1
 dashboard app itself stays on `3001`) specifically so it can run alongside a separate Langfuse monitoring stack without a port collision. If you're only running this stack, feel free to move those back to the OTel defaults (`4317`/`4318`) in `docker-compose.yml`.
 
 Want every session to also land in a separate Langfuse stack at the same time? See
-`[docs/langfuse-dual-export.md](docs/langfuse-dual-export.md)`.
+[docs/langfuse-dual-export.md](docs/langfuse-dual-export.md).
 
 ### 4. Open the dashboard
 
@@ -61,7 +78,7 @@ Want every session to also land in a separate Langfuse stack at the same time? S
 
 ## Filtering by project
 
-By default every session lands under "All projects" — Claude Code's OTel export carries no
+By default every session lands under "All projects." Claude Code's OTel export carries no
 built-in attribute for which directory/repo a session ran in. To split usage out by
 project, add a resource attribute in that project's own `.claude/settings.json` (not the
 global one):
@@ -81,8 +98,8 @@ specific one).
 
 #### Tagging every project automatically by folder name
 
-To tag every session everywhere by its current folder name — no per-project
-`.claude/settings.json` needed — wrap the `claude` binary in a shell function instead. In
+To tag every session everywhere by its current folder name, with no per-project
+`.claude/settings.json` needed, wrap the `claude` binary in a shell function instead. In
 `~/.zshrc` (or `~/.bashrc`):
 
 ```bash
@@ -95,9 +112,9 @@ claude() {
 
 `command claude` bypasses the function to call the real binary, so args still pass through.
 
-- Only fires when *you* type `claude` in a terminal — a GUI wrapper, editor extension, or
+- Only fires when *you* type `claude` in a terminal. A GUI wrapper, editor extension, or
 task runner that launches the binary directly won't trigger it. Launching via
-[cmux](https://cmux.com) instead? See `[docs/cmux-wrapper.md](docs/cmux-wrapper.md)` for
+[cmux](https://cmux.com) instead? See [docs/cmux-wrapper.md](docs/cmux-wrapper.md) for
 the equivalent wrapper-script approach.
 - A project-level `OTEL_RESOURCE_ATTRIBUTES` still takes precedence over this shell
 default, so you can hand-pick names for specific repos and let everything else fall back
@@ -107,8 +124,9 @@ Whichever tagging method you use, **existing open Claude Code sessions won't pic
 `OTEL_*` env vars are read once when the `claude` process starts, so restart (or open a new)
 session after saving to see it reflected on the dashboard.
 
-See [`docs/architecture.md`](docs/architecture.md#filtering-by-session-type) for how
-sessions are classified as interactive vs. one-shot.
+## Filtering by session type
+
+Sessions are also classified as interactive vs. one-shot automatically, no setup required. See `[docs/architecture.md](docs/architecture.md#filtering-by-session-type)` for how that classification works.
 
 ## Local development (without Docker)
 
@@ -125,10 +143,10 @@ resolves inside the Compose network).
 ## Maintenance
 
 **Editing** `otel-collector-config.yaml`**:** it's bind-mounted into the container, so saving a
-change on disk isn't enough — run `docker compose restart otel-collector` to make it take
+change on disk isn't enough. Run `docker compose restart otel-collector` to make it take
 effect.
 
-**Editing** `src/` **or** `public/`**:** the `dashboard` container hot-reloads — those directories
+**Editing** `src/` **or** `public/`**:** the `dashboard` container hot-reloads. Those directories
 are bind-mounted and the container runs `tsx watch`, so saving a change on disk is picked up
 automatically, no restart needed. Editing `package.json`, `package-lock.json`, or the
 `Dockerfile` itself does need a rebuild: `docker compose up -d --build dashboard`.
