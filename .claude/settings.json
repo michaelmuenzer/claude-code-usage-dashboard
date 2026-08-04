@@ -1,0 +1,8 @@
+{
+  "env": {
+    "OTEL_RESOURCE_ATTRIBUTES": "project.name=claude-code-usage-dashboard"
+  },
+  "permissions": {
+    "deny": ["mcp__claude-in-chrome__*", "mcp__playwright__*"]
+  }
+}

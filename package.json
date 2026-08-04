@@ -1,0 +1,26 @@
+{
+  "name": "claude-code-usage-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p . && npm run vendor",
+    "vendor": "mkdir -p public/vendor && cp node_modules/chart.js/dist/chart.umd.js public/vendor/chart.umd.js",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "test": "node --import tsx --test src/**/*.test.ts"
+  },
+  "dependencies": {
+    "@clickhouse/client": "1.11.1",
+    "chart.js": "4.4.7",
+    "express": "4.21.2"
+  },
+  "devDependencies": {
+    "@types/express": "4.17.21",
+    "@types/node": "22.10.5",
+    "@types/supertest": "6.0.2",
+    "supertest": "7.0.0",
+    "tsx": "4.19.2",
+    "typescript": "5.7.3"
+  }
+}

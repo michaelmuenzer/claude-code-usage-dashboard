@@ -1,0 +1,54 @@
+# Receives OTel traces from the Claude Code CLI and writes tool/skill spans
+# directly into this stack's own ClickHouse instance. No Langfuse involved —
+# this is the entire ingestion path for the standalone dashboard.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+processors:
+  batch: {}
+
+  # Claude Code's tool-call spans all share the generic name "claude_code.tool",
+  # so aggregating by span name can't distinguish Bash from Skill from Read etc.
+  # Rename spans using attributes Claude Code already emits so ClickHouse
+  # queries can group by name and tell them apart.
+  transform/rename_tool_spans:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(name, Concat(["claude_code.tool:", attributes["tool_name"]], ""))
+            where attributes["tool_name"] != nil and attributes["tool_name"] != "Skill"
+          - set(name, Concat(["claude_code.skill:", attributes["skill_name"]], ""))
+            where attributes["tool_name"] == "Skill"
+
+exporters:
+  clickhouse:
+    endpoint: "tcp://clickhouse:9000?dial_timeout=10s"
+    database: ${env:CLICKHOUSE_DB}
+    username: ${env:CLICKHOUSE_USER}
+    password: ${env:CLICKHOUSE_PASSWORD}
+    ttl: 0
+    create_schema: true
+    traces_table_name: otel_traces
+    sending_queue:
+      enabled: true
+    retry_on_failure:
+      enabled: true
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [transform/rename_tool_spans, batch]
+      exporters: [clickhouse]

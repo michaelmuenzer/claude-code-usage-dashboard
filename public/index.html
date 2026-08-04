@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Claude Code Usage Dashboard</title>
+  <script src="/vendor/chart.umd.js"></script>
+  <style>
+    :root {
+      color-scheme: light dark;
+
+      --page-bg: #f5f3ec;
+      --surface: #ffffff;
+      --surface-2: #faf9f5;
+      --text-primary: #1f1e1d;
+      --text-secondary: #6b6a64;
+      --text-muted: #93918a;
+      --border: rgba(31, 30, 29, 0.12);
+      --gridline: #e8e6dd;
+      --accent: #d97757;
+      --accent-ink: #b85a3d;
+      --danger: #c1443b;
+      --danger-bg: #f6e7e5;
+
+      --chart-tool: #d97757;
+      --chart-skill: #16967f;
+      --chart-plugin: #b8860b;
+
+      --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', ui-serif, serif;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --page-bg: #262624;
+        --surface: #30302e;
+        --surface-2: #2a2a28;
+        --text-primary: #f5f4ee;
+        --text-secondary: #b8b6ae;
+        --text-muted: #8a8880;
+        --border: rgba(245, 244, 238, 0.12);
+        --gridline: #3a3a37;
+        --accent: #d67350;
+        --accent-ink: #e08a6b;
+        --danger: #e2726a;
+        --danger-bg: #3a2624;
+
+        --chart-tool: #d67350;
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    /* Author rules with `display: block/flex/grid` on an element beat the UA
+       `[hidden]{display:none}` rule regardless of specificity, so anything
+       hidden via the `hidden` attribute/property needs this reasserted. */
+    [hidden] { display: none !important; }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--text-primary);
+      background: var(--page-bg);
+      margin: 0;
+      padding: 2.5rem clamp(1.25rem, 4vw, 3rem) 4rem;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    header.page-head {
+      margin-bottom: 2rem;
+    }
+
+    h1 {
+      font-family: var(--font-display);
+      font-weight: 500;
+      font-size: clamp(1.75rem, 2.4vw, 2.25rem);
+      letter-spacing: -0.01em;
+      margin: 0 0 0.35rem;
+    }
+
+    h1 .accent-dot {
+      color: var(--accent);
+    }
+
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      margin: 0;
+    }
+
+    nav.tabs {
+      display: flex;
+      gap: 0.25rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+
+    .tab-button {
+      appearance: none;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-secondary);
+      font-family: var(--font-sans);
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      padding: 0.65rem 0.9rem 0.6rem;
+      cursor: pointer;
+      transition: color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .tab-button:hover { color: var(--text-primary); }
+
+    .tab-button[aria-selected='true'] {
+      color: var(--text-primary);
+      border-bottom-color: var(--accent);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1.25rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .global-toolbar {
+      margin-bottom: 1rem;
+    }
+
+    .date-range-inputs {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .date-range-inputs input[type='datetime-local'] {
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem 0.6rem;
+      cursor: pointer;
+    }
+
+    .date-range-inputs input[type='datetime-local']:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+
+    .date-range-inputs span {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .field > label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    select {
+      appearance: none;
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b6a64' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 0.75rem center;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem 2rem 0.5rem 0.75rem;
+      min-width: 11rem;
+      cursor: pointer;
+    }
+
+    select:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+
+    .multi-select {
+      position: relative;
+    }
+
+    .multi-select > summary {
+      list-style: none;
+      appearance: none;
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b6a64' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 0.75rem center;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem 2rem 0.5rem 0.75rem;
+      min-width: 11rem;
+      cursor: pointer;
+    }
+
+    .multi-select > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .multi-select > summary::marker {
+      content: '';
+    }
+
+    .multi-select[open] > summary {
+      border-color: var(--accent);
+    }
+
+    .multi-select-panel {
+      position: absolute;
+      z-index: 20;
+      top: calc(100% + 0.35rem);
+      left: 0;
+      width: max-content;
+      min-width: 100%;
+      max-height: 16rem;
+      overflow-y: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(31, 30, 29, 0.16);
+      padding: 0.5rem;
+    }
+
+    .multi-select-actions {
+      display: flex;
+      gap: 0.75rem;
+      padding-bottom: 0.4rem;
+      margin-bottom: 0.4rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .multi-select-actions button {
+      appearance: none;
+      background: none;
+      border: none;
+      color: var(--accent-ink);
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0.1rem 0.2rem;
+    }
+
+    .multi-select-actions button:hover {
+      text-decoration: underline;
+    }
+
+    .multi-select-option {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.3rem 0.35rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .multi-select-option:hover {
+      background: var(--surface-2);
+    }
+
+    .multi-select-option input {
+      cursor: pointer;
+    }
+
+    #refreshError {
+      color: var(--danger);
+      background: var(--danger-bg);
+      border-radius: 8px;
+      padding: 0.6rem 0.9rem;
+      margin-bottom: 1.25rem;
+      font-size: 0.9rem;
+    }
+
+    #refreshError:empty { display: none; }
+
+    .panel {
+      display: none;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .panel[data-active='true'] { display: grid; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem 1.4rem 1.4rem;
+      box-shadow: 0 1px 2px rgba(31, 30, 29, 0.04);
+    }
+
+    .card h2 {
+      font-family: var(--font-sans);
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0 0 0.9rem;
+    }
+
+    .card.wide {
+      grid-column: 1 / -1;
+    }
+
+    canvas { max-height: 280px; }
+
+    #toolCallsBySkillTable h3 {
+      font-family: var(--font-sans);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin: 1rem 0 0.4rem;
+    }
+
+    #toolCallsBySkillTable h3:first-child { margin-top: 0; }
+
+    .flow-diagram {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .flow-diagram svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .truncate-cell {
+      max-width: 28rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .prompt-picker {
+      max-height: 320px;
+      overflow-y: auto;
+      margin-bottom: 1rem;
+      padding-right: 0.25rem;
+    }
+
+    .prompt-picker-row {
+      cursor: pointer;
+      padding: 0.5rem 0.6rem;
+      border-radius: 6px;
+      border: 1px solid transparent;
+    }
+
+    .prompt-picker-row:hover {
+      background: var(--surface-2);
+    }
+
+    .prompt-picker-row.selected {
+      background: var(--surface-2);
+      border-color: var(--border);
+    }
+
+    .prompt-trace {
+      padding: 0.75rem 0.6rem 0.25rem 1rem;
+      margin-top: 0.25rem;
+      border-left: 2px solid var(--border);
+    }
+
+    .waterfall {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      font-size: 0.8rem;
+    }
+
+    .waterfall-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .waterfall-label {
+      flex: 0 0 240px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text-secondary);
+    }
+
+    .waterfall-track {
+      position: relative;
+      flex: 1;
+      height: 14px;
+      background: var(--surface-2);
+      border-radius: 3px;
+    }
+
+    .waterfall-bar {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      min-width: 2px;
+      border-radius: 3px;
+      background: var(--chart-tool);
+    }
+
+    .waterfall-bar[data-kind='skill'] { background: var(--chart-skill); }
+    .waterfall-bar[data-kind='interaction'] { background: var(--accent); }
+    .waterfall-bar[data-kind='llm'] { background: var(--chart-plugin); }
+    .waterfall-bar[data-kind='execution'],
+    .waterfall-bar[data-kind='blocked_on_user'] { background: var(--text-muted); opacity: 0.6; }
+
+    .waterfall-row-expandable {
+      cursor: pointer;
+    }
+
+    .waterfall-detail {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .page-footer {
+      margin-top: 3rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .proxy-note {
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      margin: 0 0 0.5rem;
+    }
+
+    .proxy-note:last-child {
+      margin-bottom: 0;
+    }
+
+    .proxy-note code {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.05rem 0.35rem;
+      font-size: 0.9em;
+    }
+
+    .prompt-block {
+      margin-bottom: 1.5rem;
+    }
+
+    .prompt-block:last-child {
+      margin-bottom: 0;
+    }
+
+    .prompt-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.6rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .error-head {
+      cursor: pointer;
+      border-radius: 6px;
+      margin: 0 -0.5rem 0.4rem;
+      padding: 0.3rem 0.5rem;
+    }
+
+    .error-head:hover,
+    .error-head.selected {
+      background: var(--surface-2);
+    }
+
+    .error-detail {
+      margin: 0 0 0.9rem;
+      padding: 0.8rem 0.9rem;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .error-detail-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin: 0.6rem 0 0.3rem;
+    }
+
+    .error-detail-label:first-child {
+      margin-top: 0;
+    }
+
+    .expandable-text {
+      font-weight: 600;
+      flex: 1;
+      min-width: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .expandable-text.expanded {
+      overflow: visible;
+      -webkit-line-clamp: unset;
+    }
+
+    .prompt-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-shrink: 0;
+      padding-top: 0.15rem;
+    }
+
+    .prompt-time {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
+
+    .expandable-toggle {
+      display: block;
+      background: none;
+      border: none;
+      padding: 0;
+      margin: 0 0 0.5rem;
+      color: var(--chart-tool);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .expandable-toggle:hover {
+      text-decoration: underline;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .badge-interactive { background: color-mix(in srgb, var(--chart-skill) 18%, transparent); color: var(--chart-skill); }
+    .badge-one-shot { background: color-mix(in srgb, var(--chart-tool) 18%, transparent); color: var(--chart-tool); }
+    .badge-error { background: var(--danger-bg); color: var(--danger); }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 0.88rem;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--gridline);
+      padding: 0.4rem 0.6rem;
+      text-align: left;
+    }
+
+    th {
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    td:last-child, th:last-child {
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    th.sortable {
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    th.sortable:hover {
+      color: var(--text-primary);
+    }
+
+    th.sortable .sort-arrow {
+      display: inline-block;
+      margin-left: 0.25rem;
+      opacity: 0.5;
+    }
+
+    th.sortable.sorted .sort-arrow {
+      opacity: 1;
+    }
+
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      padding-top: 0.6rem;
+    }
+
+    .pagination button {
+      appearance: none;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--accent-ink);
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0.25rem 0.6rem;
+    }
+
+    .pagination button:hover:not(:disabled) {
+      text-decoration: underline;
+    }
+
+    .pagination button:disabled {
+      color: var(--text-muted);
+      cursor: default;
+    }
+
+    .pagination-status {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <header class="page-head">
+    <h1>Claude Code Usage<span class="accent-dot">.</span></h1>
+    <p class="subtitle">Tool, skill, and plugin activity from this project's telemetry.</p>
+  </header>
+
+  <div class="toolbar global-toolbar">
+    <div class="field">
+      <label for="projectFilter">Project</label>
+      <select id="projectFilter"><option value="">All projects</option></select>
+    </div>
+    <div class="field">
+      <label for="sessionFilter">Session type</label>
+      <select id="sessionFilter">
+        <option value="">All</option>
+        <option value="interactive">Interactive</option>
+        <option value="one-shot">One-shot</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="dateRangeFilter">Date range</label>
+      <select id="dateRangeFilter">
+        <option value="15">Last 15 minutes</option>
+        <option value="60">Last hour</option>
+        <option value="360">Last 6 hours</option>
+        <option value="1440">Last 24 hours</option>
+        <option value="10080">Last 7 days</option>
+        <option value="43200" selected>Last 30 days</option>
+        <option value="129600">Last 90 days</option>
+        <option value="">All time</option>
+        <option value="custom">Custom range&hellip;</option>
+      </select>
+    </div>
+    <div class="field" id="customDateRangeField" hidden>
+      <label id="customDateRangeLabel">Custom range</label>
+      <div class="date-range-inputs" role="group" aria-labelledby="customDateRangeLabel">
+        <input type="datetime-local" id="dateRangeStart" step="60" aria-label="Start" />
+        <span aria-hidden="true">&ndash;</span>
+        <input type="datetime-local" id="dateRangeEnd" step="60" aria-label="End" />
+      </div>
+    </div>
+  </div>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab-button" id="toolTabButton" role="tab" aria-selected="true" aria-controls="toolPanel">Tool Analytics</button>
+    <button class="tab-button" id="skillTabButton" role="tab" aria-selected="false" aria-controls="skillPanel">Skill Analytics</button>
+    <button class="tab-button" id="promptTabButton" role="tab" aria-selected="false" aria-controls="promptPanel">Prompts</button>
+  </nav>
+
+  <div class="toolbar">
+    <div class="field" id="toolFilterField">
+      <label id="toolFilterLabel">Tool</label>
+      <details class="multi-select" id="toolFilterDetails">
+        <summary id="toolFilterSummary" aria-labelledby="toolFilterLabel">All tools</summary>
+        <div class="multi-select-panel">
+          <div class="multi-select-actions">
+            <button type="button" id="toolFilterSelectAll">Select all</button>
+            <button type="button" id="toolFilterClearAll">Clear all</button>
+          </div>
+          <div class="multi-select-options" id="toolFilterOptions"></div>
+        </div>
+      </details>
+    </div>
+    <div class="field" id="skillFilterField" hidden>
+      <label for="skillFilter">Skill</label>
+      <select id="skillFilter"><option value="">All skills</option></select>
+    </div>
+  </div>
+
+  <div id="refreshError" role="alert"></div>
+
+  <div class="panel" id="toolPanel" data-active="true" role="tabpanel" aria-labelledby="toolTabButton">
+    <div class="card"><h2>Tool Calls by Type</h2><canvas id="toolCallsChart"></canvas></div>
+    <div class="card"><h2>Avg Latency per Tool</h2><canvas id="toolLatencyChart"></canvas></div>
+    <div class="card wide"><h2>Tool Call Volume Over Time</h2><canvas id="toolVolumeChart"></canvas></div>
+    <div class="card wide" id="toolErrorListCard"><h2>Tool Errors</h2><div id="toolErrorList"></div></div>
+  </div>
+
+  <div class="panel" id="skillPanel" role="tabpanel" aria-labelledby="skillTabButton">
+    <div class="card"><h2>Skill Usage by Name</h2><canvas id="skillUsageChart"></canvas></div>
+    <div class="card"><h2>Plugin Usage</h2><canvas id="pluginUsageChart"></canvas></div>
+    <div class="card"><h2>Skill Usage Latency</h2><canvas id="skillLatencyChart"></canvas></div>
+    <div class="card wide"><h2>Skill Call Volume Over Time</h2><canvas id="skillVolumeChart"></canvas></div>
+    <div class="card wide"><h2>Tool Calls by Skill</h2><div id="toolCallsBySkillTable"></div></div>
+    <div class="card wide"><h2>Skill &rarr; Tool Call Flow</h2><div id="skillToolFlow" class="flow-diagram"></div></div>
+    <div class="card" id="skillErrorsCard"><h2>Errors by Skill</h2><canvas id="skillErrorsChart"></canvas></div>
+    <div class="card wide" id="skillErrorListCard"><h2>Skill Errors</h2><div id="skillErrorList"></div></div>
+  </div>
+
+  <div class="panel" id="promptPanel" role="tabpanel" aria-labelledby="promptTabButton">
+    <div class="card wide"><h2>Top Token-Consuming Prompts</h2><div id="topTokenPrompts"></div></div>
+    <div class="card wide">
+      <h2>Prompt Trace Waterfall</h2>
+      <p class="proxy-note">Pick a prompt to see the real nested timeline of every span it triggered, indented by actual parent-child depth.</p>
+      <div id="promptPicker" class="prompt-picker"></div>
+    </div>
+  </div>
+
+  <footer class="page-footer">
+    <p class="proxy-note">Session type is inferred from span structure, not an explicit Claude Code attribute.</p>
+    <p class="proxy-note"><strong>Interactive</strong> prompts are part of a multi-turn session (more than one prompt in the same trace); <strong>one-shot</strong> prompts are an isolated <code>claude -p "..."</code> call.</p>
+    <p class="proxy-note">Tool Calls by Skill only lists tools that co-occurred with a skill invocation in the same trace — tool calls with no skill invocation anywhere in their trace are excluded. This is a same-trace co-occurrence heuristic, not true per-invocation nesting.</p>
+    <p class="proxy-note">Top Token-Consuming Prompts only counts LLM calls made directly for a prompt's own turn — tokens spent inside a subagent's own LLM calls (nested under a tool execution) aren't rolled up into their parent prompt's total.</p>
+  </footer>
+
+  <script src="/dashboard.js"></script>
+</body>
+</html>
