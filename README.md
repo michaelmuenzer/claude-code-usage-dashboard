@@ -88,10 +88,9 @@ specific one).
 
 #### Tagging every project automatically by folder name
 
-Adding a `.claude/settings.json` per project works but has to be done once per repo.
-`OTEL_RESOURCE_ATTRIBUTES` can't hold a dynamic value in that JSON file, so if you'd rather
-every session everywhere be tagged with its current folder name — with no per-project setup —
-wrap the `claude` binary in a shell function instead. In `~/.zshrc` (or `~/.bashrc`):
+To tag every session everywhere by its current folder name — no per-project
+`.claude/settings.json` needed — wrap the `claude` binary in a shell function instead. In
+`~/.zshrc` (or `~/.bashrc`):
 
 ```bash
 claude() {
@@ -101,26 +100,19 @@ claude() {
 }
 ```
 
-`command claude` bypasses the function to call the real binary, so args still pass through
-untouched. This sets the resource attribute for every invocation, computed from whatever
-directory you're in at the time — no `.claude/settings.json` edits needed. A project-level
-`OTEL_RESOURCE_ATTRIBUTES` (the approach above) still takes precedence over this shell
-default wherever both are present, so you can keep hand-picked names for specific repos and
-let everything else fall back to its folder name.
+`command claude` bypasses the function to call the real binary, so args still pass through.
 
-This shell function only fires when *you* type `claude` in a terminal — anything that
-launches the `claude` binary directly (a GUI wrapper, an editor extension, a task runner)
-bypasses your shell entirely and won't pick it up.
+- Only fires when *you* type `claude` in a terminal — a GUI wrapper, editor extension, or
+  task runner that launches the binary directly won't trigger it. Launching via
+  [cmux](https://cmux.com) instead? See [`docs/cmux-wrapper.md`](docs/cmux-wrapper.md) for
+  the equivalent wrapper-script approach.
+- A project-level `OTEL_RESOURCE_ATTRIBUTES` still takes precedence over this shell
+  default, so you can hand-pick names for specific repos and let everything else fall back
+  to its folder name.
 
-Launch Claude Code via [cmux](https://cmux.com) instead of a shell? The shell function
-above won't fire for cmux-managed sessions — see
-[`docs/cmux-wrapper.md`](docs/cmux-wrapper.md) for the equivalent wrapper-script approach.
-
-Whichever of the above you use, **existing open Claude Code sessions won't pick it up.**
-`OTEL_*` env vars are read once when the `claude` process starts, so editing
-`~/.claude/settings.json`, a project's `.claude/settings.json`, or your shell config only
-takes effect for sessions started *after* the change — restart (or open a new) session to
-see it reflected on the dashboard.
+Whichever tagging method you use, **existing open Claude Code sessions won't pick it up.**
+`OTEL_*` env vars are read once when the `claude` process starts, so restart (or open a new)
+session after saving to see it reflected on the dashboard.
 
 ## Filtering by session type
 
